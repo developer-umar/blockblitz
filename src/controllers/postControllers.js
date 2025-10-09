@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { mongo } from "mongoose";
 import { Post } from "../models/postModel.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -38,7 +38,7 @@ export const createPost = asyncHandler(async (req, res) => {
 
     await post.populate("authorId", "avatar");
 
-    return  res.status(201).json(new ApiResponse(200, post, "post created sucessfully...."))
+    return res.status(201).json(new ApiResponse(200, post, "post created sucessfully...."))
 
 
 
@@ -52,32 +52,32 @@ export const createPost = asyncHandler(async (req, res) => {
 
 export const getAllPosts = asyncHandler(async (req, res) => {
 
-    const posts =  await Post.aggregate([
-
-    {
-        $lookup:{
-
-            from:"users",   //mongi db me jo collection ka naam dia hai  from matalb kis collection se join karna hai 
-            localField:"authorId",       //post   me jo  atrubute  common dono me 
-            foreignField:"_id",            //user collectionki id jiske basis pr join karenge 
-            as:"author"    ,          // ye ek array aaega 
-
-        }
-    },
+    const posts = await Post.aggregate([
 
         {
-            $unwind:"$author"     //author ek naya attribute ban gya is liye $se acces kia ar ye array ko normal objetc me convert karta hai 
+            $lookup: {
+
+                from: "users",   //mongi db me jo collection ka naam dia hai  from matalb kis collection se join karna hai 
+                localField: "authorId",       //post   me jo  atrubute  common dono me 
+                foreignField: "_id",            //user collectionki id jiske basis pr join karenge 
+                as: "author",          // ye ek array aaega 
+
+            }
+        },
+
+        {
+            $unwind: "$author"     //author ek naya attribute ban gya is liye $se acces kia ar ye array ko normal objetc me convert karta hai 
         },
 
 
         {                 //jo zarrori attributes hai khli whi manwange 
-            $project:{
-                title:1,
+            $project: {
+                title: 1,
                 // content:1,                       
-                image:1,
-                createdAt:1,
-                "author.username":1,
-                "author.avatar":1
+                image: 1,
+                createdAt: 1,
+                "author.username": 1,
+                "author.avatar": 1
 
             }
         }
@@ -85,9 +85,9 @@ export const getAllPosts = asyncHandler(async (req, res) => {
     ])
 
 
-  //post ar post  ki length matlb kitni post hai  usi hissab se itertae karnge 
+    //post ar post  ki length matlb kitni post hai  usi hissab se itertae karnge 
     return res.status(200).json(
-        new ApiResponse(200,{count:posts.length, posts})
+        new ApiResponse(200, { count: posts.length, posts })
     )
 
 
@@ -100,45 +100,45 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 
 // 📌 Get single post by Id (with author + comments)  detailed  
 
-export const getpostbyId = asyncHandler(async(req,res)=>{
+export const getpostbyId = asyncHandler(async (req, res) => {
 
 
-    const   {postId} = req.params;
+    const { postId } = req.params;
 
-     if (!mongoose.Types.ObjectId.isValid(postId)) {
-    throw new ApiError(400, "Invalid postId");
-  }
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+        throw new ApiError(400, "Invalid postId");
+    }
 
-    const post = await  Post.aggregate([
-    //  post ki id match kar rahe 
+    const post = await Post.aggregate([
+        //  post ki id match kar rahe 
 
         {
-         $match:{
-            _id:new mongoose.Types.ObjectId(postId)      //is post id atch karo 
-         }
+            $match: {
+                _id: new mongoose.Types.ObjectId(postId)      //is post id atch karo 
+            }
 
         },
         //  user ka datat attach karne ke liye 
         {
-            $lookup:{
-                from:"users",
-                localField:"authorId",
-                foreignField:"_id",
-                as:"author"
+            $lookup: {
+                from: "users",
+                localField: "authorId",
+                foreignField: "_id",
+                as: "author"
             }
 
         },
         {
-            $unwind:"$author"                       //array ko normla object me conevrt kar rahe 
+            $unwind: "$author"                       //array ko normla object me conevrt kar rahe 
 
         },
         // comnet collection add karne ke liye 
         {
-            $lookup:{
-                from:"comments",        
-                localField:"_id",       //post ki id 
-                foreignField:"postId",   //coment keandr post ki id 
-                as:"comments"
+            $lookup: {
+                from: "comments",
+                localField: "_id",       //post ki id 
+                foreignField: "postId",   //coment keandr post ki id 
+                as: "comments"
 
 
 
@@ -146,26 +146,26 @@ export const getpostbyId = asyncHandler(async(req,res)=>{
         },
 
         {
-            $project:{
-                title:1,
-                content:1,
-                image:1,
-                likes:1,
-                createdAt:1,
-                "author.username":1,
-                "author.avatar":1,
-                comments:1
+            $project: {
+                title: 1,
+                content: 1,
+                image: 1,
+                likes: 1,
+                createdAt: 1,
+                "author.username": 1,
+                "author.avatar": 1,
+                comments: 1
 
 
             }
         }
     ])
 
-    if(!post  || post.length ===0){
+    if (!post || post.length === 0) {
         throw new ApiError(404, "Post not found");
     }
 
-    return res.status(200).json(new ApiResponse(200, post[0],"post  fetched succesfully"));
+    return res.status(200).json(new ApiResponse(200, post[0], "post  fetched succesfully"));
 
 
 
@@ -181,24 +181,74 @@ export const getpostbyId = asyncHandler(async(req,res)=>{
 // delete post 
 
 export const deletePost = asyncHandler(async (req, res) => {
-  const { postId } = req.params;
+    const { postId } = req.params;
 
-  const post = await Post.findById(postId);
+    const post = await Post.findById(postId);
 
-  if (!post) {
-    throw new ApiError(404, "Post not found");
-  }
+    if (!post) {
+        throw new ApiError(404, "Post not found");
+    }
 
-  // Check ownership
-  if (post.authorId.toString() !== req.user._id.toString()) {
-    throw new ApiError(403, "You are not authorized to delete this post");
-  }
+    // Check ownership
+    if (post.authorId.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You are not authorized to delete this post");
+    }
 
-  await post.deleteOne();
+    await post.deleteOne();
 
-  res.status(200).json(new ApiResponse(200,{},"post  deleted succesfully "));
-  
+    res.status(200).json(new ApiResponse(200, {}, "post  deleted succesfully "));
+
 });
+
+
+// toggle like 
+// yha aao post id nikalo  user ki id nikalo dekho wo user likes array me hai ki nhi is particular  post ki likes arary me  matlab is user ne laready like kia hai to unlike kar do agar like nhi kia to like kar do smmjhe .
+// Mongoose ka ObjectId object ek built-in method deta hai — .equals()
+// Jo ObjectId ko string ya ObjectId dono se safely compare karta hai.
+// optimization:
+//1. front end me debouncing use karna smjhe  taaki bar bar user like  unlike na kar  paae 
+// 2.  ek middleware banaya taaki ek user   1 second ka baad hi like unlike kar paae usse ohle kare to server se  erro response bhej do 
+
+
+// postRoutes.js
+
+export const likePost = asyncHandler(async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user._id;
+
+    if (!mongoose.Types.ObjectId.isValid(postId)) {
+        return res.status(404).json({ message: "Invalid post id" });
+    }
+
+    const post = await Post.findById(postId);
+    if (!post) return res.status(404).json({ message: "Post not found" });
+
+    const objUserId = new mongoose.Types.ObjectId(userId);
+    const isLiked = post.likes.some(id => id.equals(objUserId));
+
+    const updatedPost = await Post.findByIdAndUpdate(
+        postId,
+        isLiked ? { $pull: { likes: objUserId } } : { $addToSet: { likes: objUserId } },
+        { new: true, select: "likes" }
+    );
+
+    return res.status(200).json(new ApiResponse(
+        200,
+        { isLiked: !isLiked, likeCount: updatedPost.likes.length },
+        "Post like toggled"
+    ));
+});
+
+
+
+
+
+
+
+
+
+
+
 
 
 
