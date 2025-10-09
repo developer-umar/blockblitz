@@ -8,7 +8,7 @@ const commentSchema = new mongoose.Schema({
   },
   authorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",    // relation with User  kisne post kia 
+    ref: "User",    // relation with User kisne  comment kia hai 
     required: true
   },
   message: {

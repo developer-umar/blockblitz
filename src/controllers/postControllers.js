@@ -101,78 +101,64 @@ export const getAllPosts = asyncHandler(async (req, res) => {
 // 📌 Get single post by Id (with author + comments)  detailed  
 
 export const getpostbyId = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
 
+  // ✅ Validate postId
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    throw new ApiError(400, "Invalid postId");
+  }
 
-    const { postId } = req.params;
+  // ✅ Aggregation pipeline to fetch post + author info + likes count
+  const post = await Post.aggregate([
+    // 1️⃣ Match the specific post
+    {
+      $match: {
+        _id: new mongoose.Types.ObjectId(postId),
+      },
+    },
+    // 2️⃣ Lookup author data from users collection
+    {
+      $lookup: {
+        from: "users",          // collection name in MongoDB
+        localField: "authorId", // field in Post
+        foreignField: "_id",    // field in User
+        as: "author",
+      },
+    },
+    // 3️⃣ Convert author array to object
+    { $unwind: "$author" },
+    // 4️⃣ Add likes count (total number of likes)
+    {
+      $addFields: {
+        likesCount: { $size: "$likes" },
+      },
+    },
+    // 5️⃣ Project only required fields to optimize payload
+    {
+      $project: {
+        title: 1,
+        content: 1,
+        image: 1,
+        createdAt: 1,
+        likesCount: 1,              // include likes count
+        "author.username": 1,
+        "author.avatar": 1,
+        // comments removed completely
+      },
+    },
+  ]);
 
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-        throw new ApiError(400, "Invalid postId");
-    }
+  // ✅ Check if post exists
+  if (!post || post.length === 0) {
+    throw new ApiError(404, "Post not found");
+  }
 
-    const post = await Post.aggregate([
-        //  post ki id match kar rahe 
+  // ✅ Send response
+  return res
+    .status(200)
+    .json(new ApiResponse(200, post[0], "Post fetched successfully"));
+});
 
-        {
-            $match: {
-                _id: new mongoose.Types.ObjectId(postId)      //is post id atch karo 
-            }
-
-        },
-        //  user ka datat attach karne ke liye 
-        {
-            $lookup: {
-                from: "users",
-                localField: "authorId",
-                foreignField: "_id",
-                as: "author"
-            }
-
-        },
-        {
-            $unwind: "$author"                       //array ko normla object me conevrt kar rahe 
-
-        },
-        // comnet collection add karne ke liye 
-        {
-            $lookup: {
-                from: "comments",
-                localField: "_id",       //post ki id 
-                foreignField: "postId",   //coment keandr post ki id 
-                as: "comments"
-
-
-
-            }
-        },
-
-        {
-            $project: {
-                title: 1,
-                content: 1,
-                image: 1,
-                likes: 1,
-                createdAt: 1,
-                "author.username": 1,
-                "author.avatar": 1,
-                comments: 1
-
-
-            }
-        }
-    ])
-
-    if (!post || post.length === 0) {
-        throw new ApiError(404, "Post not found");
-    }
-
-    return res.status(200).json(new ApiResponse(200, post[0], "post  fetched succesfully"));
-
-
-
-
-
-
-})
 // note jo bhi freighn field ar loacl field loge wo  jis  collection ke object se db se query karte hai uske point of view se sochna hamesha 
 
 

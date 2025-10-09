@@ -34,6 +34,7 @@ import  jwt from "jsonwebtoken"
      throw new ApiError(401,"Invalid Access Token")
    }
    // agar usr hai to  naya object addd karenge usertaaki controllers bina db calla kye acces karle user ko
+   console.log(user)
    req.user = user;
    console.log(req.user);
    next();
