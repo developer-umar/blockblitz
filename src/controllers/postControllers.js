@@ -10,35 +10,36 @@ import { uploadonCloudinary } from "../utils/cloudinary.js";
 // create post 
 export const createPost = asyncHandler(async (req, res) => {
 
-    const { title, content } = req.body;
+  const { title, content, category } = req.body;
 
-    if (!title || !content) {
-        throw new ApiError(400, "title  and content is required ");
-    }
+  if (!title || !content || !category) {
+    throw new ApiError(400, "title  and content and category  is required ");
+  }
 
-    let imagelocalpath = await req.files?.image[0]?.path;
+  let imagelocalpath = await req.files?.image[0]?.path;
 
-    if (!imagelocalpath) {
-        throw new ApiError(400, "image local path is required ")
-    }
+  if (!imagelocalpath) {
+    throw new ApiError(400, "image local path is required ")
+  }
 
-    const image = await uploadonCloudinary(imagelocalpath);
+  const image = await uploadonCloudinary(imagelocalpath);
 
-    if (!image) {
-        throw new ApiError(400, "image not uploaded path required ")
-    }
+  if (!image) {
+    throw new ApiError(400, "image not uploaded path required ")
+  }
 
-    const post = await Post.create({
-        authorId: req.user._id,
-        title,
-        content,
-        image: image.url
-    })
+  const post = await Post.create({
+    authorId: req.user._id,
+    title,
+    content,
+    category,
+    image: image.url
+  })
 
 
-    await post.populate("authorId", "avatar");
+  await post.populate("authorId", "avatar");
 
-    return res.status(201).json(new ApiResponse(200, post, "post created sucessfully...."))
+  return res.status(201).json(new ApiResponse(200, post, "post created sucessfully...."))
 
 
 
@@ -52,43 +53,50 @@ export const createPost = asyncHandler(async (req, res) => {
 
 export const getAllPosts = asyncHandler(async (req, res) => {
 
-    const posts = await Post.aggregate([
+  const posts = await Post.aggregate([
 
-        {
-            $lookup: {
+    {
+      $lookup: {
 
-                from: "users",   //mongi db me jo collection ka naam dia hai  from matalb kis collection se join karna hai 
-                localField: "authorId",       //post   me jo  atrubute  common dono me 
-                foreignField: "_id",            //user collectionki id jiske basis pr join karenge 
-                as: "author",          // ye ek array aaega 
+        from: "users",   //mongi db me jo collection ka naam dia hai  from matalb kis collection se join karna hai 
+        localField: "authorId",       //post   me jo  atrubute  common dono me 
+        foreignField: "_id",            //user collectionki id jiske basis pr join karenge 
+        as: "author",          // ye ek array aaega 
 
-            }
-        },
+      }
+    },
 
-        {
-            $unwind: "$author"     //author ek naya attribute ban gya is liye $se acces kia ar ye array ko normal objetc me convert karta hai 
-        },
+    {
+      $unwind: "$author"     //author ek naya attribute ban gya is liye $se acces kia ar ye array ko normal objetc me convert karta hai 
+    },
 
-
-        {                 //jo zarrori attributes hai khli whi manwange 
-            $project: {
-                title: 1,
-                // content:1,                       
-                image: 1,
-                createdAt: 1,
-                "author.username": 1,
-                "author.avatar": 1
-
-            }
-        }
-
-    ])
+    {
+      $addFields: {
+        likeCount: { $size: "$likes" } // ✅ add like count
+      }
+    },
 
 
-    //post ar post  ki length matlb kitni post hai  usi hissab se itertae karnge 
-    return res.status(200).json(
-        new ApiResponse(200, { count: posts.length, posts })
-    )
+    {                 //jo zarrori attributes hai khli whi manwange 
+      $project: {
+        title: 1,
+        content: 1,
+        image: 1,
+        createdAt: 1,
+        likeCount:1,
+        "author.username": 1,
+        "author.avatar": 1
+
+      }
+    }
+
+  ])
+
+
+  //post ar post  ki length matlb kitni post hai  usi hissab se itertae karnge 
+  return res.status(200).json(
+    new ApiResponse(200, { count: posts.length, posts })
+  )
 
 
 
@@ -167,22 +175,22 @@ export const getpostbyId = asyncHandler(async (req, res) => {
 // delete post 
 
 export const deletePost = asyncHandler(async (req, res) => {
-    const { postId } = req.params;
+  const { postId } = req.params;
 
-    const post = await Post.findById(postId);
+  const post = await Post.findById(postId);
 
-    if (!post) {
-        throw new ApiError(404, "Post not found");
-    }
+  if (!post) {
+    throw new ApiError(404, "Post not found");
+  }
 
-    // Check ownership
-    if (post.authorId.toString() !== req.user._id.toString()) {
-        throw new ApiError(403, "You are not authorized to delete this post");
-    }
+  // Check ownership
+  if (post.authorId.toString() !== req.user._id.toString()) {
+    throw new ApiError(403, "You are not authorized to delete this post");
+  }
 
-    await post.deleteOne();
+  await post.deleteOne();
 
-    res.status(200).json(new ApiResponse(200, {}, "post  deleted succesfully "));
+  res.status(200).json(new ApiResponse(200, {}, "post  deleted succesfully "));
 
 });
 
@@ -199,33 +207,192 @@ export const deletePost = asyncHandler(async (req, res) => {
 // postRoutes.js
 
 export const likePost = asyncHandler(async (req, res) => {
-    const { postId } = req.params;
-    const userId = req.user._id;
+  const { postId } = req.params;
+  const userId = req.user._id;
 
-    if (!mongoose.Types.ObjectId.isValid(postId)) {
-        return res.status(404).json({ message: "Invalid post id" });
+  if (!mongoose.Types.ObjectId.isValid(postId)) {
+    return res.status(404).json({ message: "Invalid post id" });
+  }
+
+  const post = await Post.findById(postId);
+  if (!post) return res.status(404).json({ message: "Post not found" });
+
+  const objUserId = new mongoose.Types.ObjectId(userId);
+  const isLiked = post.likes.some(id => id.equals(objUserId));
+
+  const updatedPost = await Post.findByIdAndUpdate(
+    postId,
+    isLiked ? { $pull: { likes: objUserId } } : { $addToSet: { likes: objUserId } },
+    { new: true, select: "likes" }
+  );
+
+  return res.status(200).json(new ApiResponse(
+    200,
+    { isLiked: !isLiked, likeCount: updatedPost.likes.length },
+    "Post like toggled"
+  ));
+});
+
+// //  Get posts by category filter
+export const getPostsByCategory = asyncHandler(async (req, res) => {
+  const { category } = req.query;
+
+  //  Validation
+  if (!category) {
+    throw new ApiError(400, "Category is required in query params");
+  }
+
+  const allowedCategories = ["Technology", "Entertainment", "Politics", "Education"];
+  if (!allowedCategories.includes(category)) {
+    throw new ApiError(400, "Invalid category name");
+  }
+
+  // Aggregate posts by category
+  const posts = await Post.aggregate([
+    //  Match category
+    { $match: { category } },
+
+    //  Join user data
+    {
+      $lookup: {
+        from: "users",
+        localField: "authorId",
+        foreignField: "_id",
+        as: "author"
+      }
+    },
+    { $unwind: "$author" },
+
+    //  Add likeCount field
+    {
+      $addFields: {
+        likeCount: { $size: "$likes" }
+      }
+    },
+
+    // Select required fields only
+    {
+      $project: {
+        title: 1,
+        content: 1,         //  added
+        image: 1,
+        createdAt: 1,
+        category: 1,
+        likeCount: 1,       //  added
+        "author.username": 1,
+        "author.avatar": 1
+      }
     }
+  ]);
 
-    const post = await Post.findById(postId);
-    if (!post) return res.status(404).json({ message: "Post not found" });
-
-    const objUserId = new mongoose.Types.ObjectId(userId);
-    const isLiked = post.likes.some(id => id.equals(objUserId));
-
-    const updatedPost = await Post.findByIdAndUpdate(
-        postId,
-        isLiked ? { $pull: { likes: objUserId } } : { $addToSet: { likes: objUserId } },
-        { new: true, select: "likes" }
-    );
-
-    return res.status(200).json(new ApiResponse(
-        200,
-        { isLiked: !isLiked, likeCount: updatedPost.likes.length },
-        "Post like toggled"
-    ));
+  //  Send response
+  return res
+    .status(200)
+    .json(new ApiResponse(200, { count: posts.length, posts }, "Posts fetched by category"));
 });
 
 
+
+
+//  searchPosts - MongoDB Atlas Search (fuzzy + latest-first)
+export const searchPosts = asyncHandler(async (req, res) => {
+  const q = (req.query.query || "").trim(); // user ke search input ko lo aur trim karo
+
+  if (!q) {
+    throw new ApiError(400, "Search query is required");
+  }
+
+  const agg = [
+    {
+      // Atlas Search Stage
+      // "postSearch" — ye wahi index name hai jo tu Atlas me banaya tha
+      $search: {
+        index: "postSearch",
+        compound: {
+          should: [
+            // Match title (fuzzy search: minor spelling mistake allow)
+            {
+              text: {
+                query: q,
+                path: "title",
+                fuzzy: { maxEdits: 2, prefixLength: 2 }
+              }
+            },
+            // Match content
+            {
+              text: {
+                query: q,
+                path: "content",
+                fuzzy: { maxEdits: 2 }
+              }
+            },
+            //  Match category
+            {
+              text: {
+                query: q,
+                path: "category",
+                fuzzy: { maxEdits: 2 }
+              }
+            },
+            //  Match author username
+            {
+              text: {
+                query: q,
+                path: "author.username",
+                fuzzy: { maxEdits: 2}
+              }
+            }
+          ]
+        },
+        highlight: { path: ["title", "content"] } // optional: highlights return karega
+      }
+    },
+
+    // Add search relevance score for sorting
+    { $addFields: { score: { $meta: "searchScore" } } },
+
+    //Join author info from users collection
+    {
+      $lookup: {
+        from: "users",
+        localField: "authorId",
+        foreignField: "_id",
+        as: "author"
+      }
+    },
+    { $unwind: "$author" },
+
+    // Like count compute karlo (safe for empty likes)
+    { $addFields: { likeCount: { $size: { $ifNull: ["$likes", []] } } } },
+
+    // Select only the fields needed in response
+    {
+      $project: {
+        title: 1,
+        content: 1,
+        image: 1,
+        category: 1,
+        createdAt: 1,
+        likeCount: 1,
+        "author.username": 1,
+        "author.avatar": 1,
+        score: 1,
+        highlights: { $meta: "searchHighlights" } // optional
+      }
+    },
+
+    // Sort: first by search relevance (score), then by latest createdAt
+    { $sort: { score: -1, createdAt: -1 } }
+  ];
+
+  // Run aggregation
+  const posts = await Post.aggregate(agg);
+
+  // ✅ Send response
+  return res.status(200).json(
+    new ApiResponse(200, { count: posts.length, posts }, "Search results fetched successfully")
+  );
+});
 
 
 

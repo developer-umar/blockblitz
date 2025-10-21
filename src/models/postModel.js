@@ -11,6 +11,13 @@ const postSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  category: {
+    type: String,
+    enum: ["Technology", "Entertainment", "Politics", "Education"], //adeed ctaegory for filter blogs
+    required: true
+
+  },
+
   content: {
     type: String,
     required: true
@@ -19,7 +26,7 @@ const postSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
-  
+
   likes: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"     // which users liked the post
@@ -30,4 +37,4 @@ const postSchema = new mongoose.Schema({
   }
 });
 
-export   const Post   =  mongoose.model("Post", postSchema);
+export const Post = mongoose.model("Post", postSchema);
