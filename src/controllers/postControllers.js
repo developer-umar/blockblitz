@@ -8,45 +8,82 @@ import { uploadonCloudinary } from "../utils/cloudinary.js";
 
 
 // create post 
-export const createPost = asyncHandler(async (req, res) => {
+// export const createPost = asyncHandler(async (req, res) => {
 
+//   const { title, content, category } = req.body;
+
+//   if (!title || !content || !category) {
+//     throw new ApiError(400, "title  and content and category  is required ");
+//   }
+
+//   let imagelocalpath = await req.files?.image[0]?.path;
+
+//   if (!imagelocalpath) {
+//     throw new ApiError(400, "image local path is required ")
+//   }
+
+//   const image = await uploadonCloudinary(imagelocalpath);
+
+//   if (!image) {
+//     throw new ApiError(400, "image not uploaded path required ")
+//   }
+
+//   const post = await Post.create({
+//     authorId: req.user._id,
+//     title,
+//     content,
+//     category,
+//     image: image.url
+//   })
+
+
+//   await post.populate("authorId", "avatar");
+
+//   return res.status(201).json(new ApiResponse(200, post, "post created sucessfully...."))
+
+
+
+
+// })
+// get ll post with author information 
+// ye ssare post jo hamre diplay honge sare 
+//  oopr walal nhi chal rha tha kuki  local file path render nhi le paa rah tha
+
+
+export const createPost = asyncHandler(async (req, res) => {
   const { title, content, category } = req.body;
 
   if (!title || !content || !category) {
-    throw new ApiError(400, "title  and content and category  is required ");
+    throw new ApiError(400, "title, content, and category are required");
   }
 
-  let imagelocalpath = await req.files?.image[0]?.path;
-
-  if (!imagelocalpath) {
-    throw new ApiError(400, "image local path is required ")
+  //  Access uploaded file
+  const file = req.files?.image?.[0];
+  if (!file) {
+    throw new ApiError(400, "image is required");
   }
 
-  const image = await uploadonCloudinary(imagelocalpath);
-
+  //  Upload directly from memory to Cloudinary
+  const image = await uploadonCloudinary(file.buffer);
   if (!image) {
-    throw new ApiError(400, "image not uploaded path required ")
+    throw new ApiError(400, "Image upload failed");
   }
 
+  //  Create new post in DB
   const post = await Post.create({
     authorId: req.user._id,
     title,
     content,
     category,
-    image: image.url
-  })
-
+    image: image.secure_url, //  Use Cloudinary’s secure URL
+  });
 
   await post.populate("authorId", "avatar");
 
-  return res.status(201).json(new ApiResponse(200, post, "post created sucessfully...."))
-
-
-
-
-})
-// get ll post with author information 
-// ye ssare post jo hamre diplay honge sare 
+  return res
+    .status(201)
+    .json(new ApiResponse(200, post, "Post created successfully "));
+});
 
 
 
