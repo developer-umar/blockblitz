@@ -6,17 +6,7 @@ import cookieParser from "cookie-parser"
 
 const app = express()
 
-app.use(cors({
-  origin: function(origin, callback) {
-    // origin null (Postman) ya localhost:5173 → allow
-    if (!origin || origin === "http://localhost:5173") {
-      callback(null, true);
-    } else {
-      callback(null, true); // filhaal sab allow karna
-    }
-  },
-  credentials: true
-}));
+app.use(cors())
 
 app.use(express.json());   
 app.use(express.urlencoded({extended: true, limit: "16kb"}))
