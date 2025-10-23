@@ -100,10 +100,10 @@ export const registerUser = asyncHandler(async (req, res) => {
 
 export const loginUser = asyncHandler(async (req, res) => {
 
-    const { username, email, password } = req.body;
+    const { email, password } = req.body;
 
-    if (!(username || email)) {
-        throw new ApiError(401, "username and password is required ")
+    if (!(email)) {
+        throw new ApiError(401, "email  and is required ")
     }
 
     const user = await User.findOne({
