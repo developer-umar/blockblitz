@@ -130,9 +130,12 @@ export const loginUser = asyncHandler(async (req, res) => {
 
 
     const options = {
-        httpOnly: true,          // iska matlab frontend JS code se cookie ko access/modify nahi kar sakte
-        secure: true     // iska matlab cookie sirf HTTPS connection par hi bheji jayegi
-    }
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  };
 
     return res.status(200)
     .cookie("accessToken",acessToken,options)
