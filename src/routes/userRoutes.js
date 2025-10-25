@@ -13,7 +13,7 @@ router.post("/login",loginUser)
 
 
 router.post("/logout",logoutUser);
-router.get("/refresh-token",verifyJwt,refreshAccessToken)
+router.get("/refresh-token",refreshAccessToken)
 router.get("/getuser",verifyJwt,getCurrentUser);
 
 
