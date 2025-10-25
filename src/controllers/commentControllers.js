@@ -6,113 +6,114 @@ import mongoose from "mongoose";
 
 
 
-export const  postComment = asyncHandler(async(req,res)=>{
+export const postComment = asyncHandler(async (req, res) => {
 
-    const {postId} = req.params;
-    const {message} = req.body;
+  const { postId } = req.params;
+  const { message } = req.body;
 
-    if(!mongoose.isValidObjectId(postId)){
-        return res(404).json({message:"invalid post id "});
-
-
-    }
-
-     if(message.length <1  || message.length >100){
-        return res.status(404).json({message:"enetr appropriate length of comment "});
-
-     }
-
-     const  new_message = await Comment.create({
-        postId:postId,
-        authorId:req.user._id,
-        message:message
-
-     })
+  if (!mongoose.isValidObjectId(postId)) {
+    return res.status(404).json({ message: "invalid post id " });
 
 
-     if(!new_message){
+  }
 
-     return res.status(500).json({message:"comment not inserted "})
+  if (message.length < 1 || message.length > 100) {
+    return res.status(404).json({ message: "enetr appropriate length of comment " });
 
-     }
+  }
 
-     
+  const new_message = await Comment.create({
+    postId: postId,
+    authorId: req.user._id,
+    message: message
+
+  })
 
 
-     return  res.status(200).json(
-        new ApiResponse(201,new_message,"comment inserted  succefully ")
-     );
+  if (!new_message) {
+
+    return res.status(500).json({ message: "comment not inserted " })
+
+  }
+
+
+
+
+  return res.status(200).json(
+    new ApiResponse(201, new_message, "comment inserted  succefully ")
+  );
 
 
 })
 
 // post 
 
- export const  getCommentsById = asyncHandler(async(req,res)=>{
+// commentControllers.js mein getCommentsById function (Corrected)
 
-    const {postId} = req.params; 
-
-
-     if(!mongoose.isValidObjectId(postId)){
-        return res(404).json({message:"invalid post id "});
+export const getCommentsById = asyncHandler(async (req, res) => {
+  const { postId } = req.params;
 
 
+  if (!mongoose.isValidObjectId(postId)) {
+    return res.status(404).json({ message: "invalid post id " });
+  }
+
+  const comments = await Comment.aggregate([
+    // post ki id match karo
+
+    {
+      $match: {
+        postId: new mongoose.Types.ObjectId(postId)
+
+      }
+    },
+
+    // join karan user ka data
+
+
+    {
+      $lookup: {
+        from: "users",
+        localField: "authorId",
+        foreignField: "_id",
+        as: "author"
+
+      }
+    },
+
+    // author ek arary hai isko normal object me ocnvert klaro 
+    // jab ek baar create ho jaat hai jaise author wo ek atatribute ban gya usko $se hi acces karte hain
+
+
+    { // 🎯 FIX: Preserve comments even if the author is deleted
+      $unwind: {
+        path: "$author",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+
+    // khli necessry  fields  mangwao
+
+    {
+      $project: {
+        message: 1,
+        createdAt: 1,
+        // Agar author nahi mila to username/avatar undefined honge (jo frontend handle kar lega)
+        "author.username": 1,
+        "author.avatar": 1,
+
+
+      }
+    },
+    // sort by newest  commnet 
+
+    {
+      $sort: { createdAt: -1 }
     }
-
-    const comments = await   Comment.aggregate([
-        // post ki id match karo  
-
-        {
-            $match:{
-                postId: new mongoose.Types.ObjectId(postId)
-            
-            }
-        },
-
-        // join karan user ka data 
+  ])
 
 
-        {
-            $lookup:{
-                from:"users",
-                localField:"authorId",
-                foreignField:"_id",
-                as:"author"
-
-            }
-        },
-
-        // author ek arary hai isko normal object me ocnvert klaro 
-        // jab ek baar create ho jaat hai jaise author wo ek atatribute ban gya usko $se hi acces karte hain
-
-
-        {$unwind:"$author"},
-
-        // khli necessry  fields  mangwao
-
-        {
-            $project:{
-                message:1,
-                createdAt:1,
-                "author.username":1,
-                "author.avatar":1,
-
-
-            }
-        },
-        // sort by newest  commnet 
-
-        {
-            $sort:{createdAt:-1}
-        }
-
-
-
-    ])
-
-
-
-if (!comments || comments.length < 1) {
+  if (!comments || comments.length < 1) {
     return res.status(404).json({ message: "No comments found" });
   }
 
@@ -120,9 +121,7 @@ if (!comments || comments.length < 1) {
   return res
     .status(200)
     .json(new ApiResponse(200, comments, "Comments fetched successfully"));
-
-
- });
+});
 
 
 //  khali  jisne post create kia hai ar jisme commnet likha hai wo hi commnet khli delte kar skta hai 

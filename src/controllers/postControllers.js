@@ -103,9 +103,17 @@ export const getAllPosts = asyncHandler(async (req, res) => {
       }
     },
 
+    // {
+    //   $unwind: "$author"     //author ek naya attribute ban gya is liye $se acces kia ar ye array ko normal objetc me convert karta hai 
+    // },
+
+
     {
-      $unwind: "$author"     //author ek naya attribute ban gya is liye $se acces kia ar ye array ko normal objetc me convert karta hai 
-    },
+    $unwind: {
+        path: "$author",
+        preserveNullAndEmptyArrays: true // Yeh zaroori hai!
+    }
+},
 
     {
       $addFields: {
@@ -171,7 +179,13 @@ export const getpostbyId = asyncHandler(async (req, res) => {
       },
     },
     // 3️⃣ Convert author array to object
-    { $unwind: "$author" },
+    // { $unwind: "$author" },
+    {
+    $unwind: {
+        path: "$author",
+        preserveNullAndEmptyArrays: true // Yeh zaroori hai!
+    }
+},
     // 4️⃣ Add likes count (total number of likes)
     {
       $addFields: {
@@ -298,7 +312,15 @@ export const getPostsByCategory = asyncHandler(async (req, res) => {
         as: "author"
       }
     },
-    { $unwind: "$author" },
+    // { $unwind: "$author" },
+
+
+    {
+    $unwind: {
+        path: "$author",
+        preserveNullAndEmptyArrays: true // Yeh zaroori hai!
+    }
+},
 
     //  Add likeCount field
     {
@@ -397,7 +419,16 @@ export const searchPosts = asyncHandler(async (req, res) => {
         as: "author"
       }
     },
-    { $unwind: "$author" },
+    // { $unwind: "$author" },
+
+
+    {
+    $unwind: {
+        path: "$author",
+        preserveNullAndEmptyArrays: true // Yeh zaroori hai!
+    }
+},
+     
 
     // Like count compute karlo (safe for empty likes)
     { $addFields: { likeCount: { $size: { $ifNull: ["$likes", []] } } } },
