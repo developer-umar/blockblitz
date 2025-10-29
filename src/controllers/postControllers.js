@@ -121,6 +121,10 @@ export const getAllPosts = asyncHandler(async (req, res) => {
       }
     },
 
+    {
+      $sort:{createdAt:-1}
+    },
+
 
     {                 //jo zarrori attributes hai khli whi manwange 
       $project: {
@@ -192,6 +196,12 @@ export const getpostbyId = asyncHandler(async (req, res) => {
         likesCount: { $size: "$likes" },
       },
     },
+
+     {
+      $sort:{createdAt:-1}
+    },
+
+    
     // 5️⃣ Project only required fields to optimize payload
     {
       $project: {
@@ -327,6 +337,10 @@ export const getPostsByCategory = asyncHandler(async (req, res) => {
       $addFields: {
         likeCount: { $size: "$likes" }
       }
+    },
+
+      {
+      $sort:{createdAt:-1}
     },
 
     // Select required fields only
@@ -477,7 +491,7 @@ export const getPostsByAuthorId = asyncHandler(async (req, res) => {
   }
 
   // Find posts with matching authorId
-  const posts = await Post.find({ authorId });
+  const posts = await Post.find({ authorId }).sort({createdAt:-1});
 
   // If no posts found
   if (!posts || posts.length === 0) {
