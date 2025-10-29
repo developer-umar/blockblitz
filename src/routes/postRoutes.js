@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { verifyJwt } from "../middleware/auth.js";
-import { createPost, deletePost, getAllPosts, getpostbyId, getPostsByCategory, likePost, searchPosts } from "../controllers/postControllers.js";
+import { createPost, deletePost, getAllPosts, getpostbyId, getPostsByAuthorId, getPostsByCategory, likePost, searchPosts } from "../controllers/postControllers.js";
 import { upload } from "../middleware/multer.js";
 import { likeLimiter } from "../middleware/likeLimiter.js";
 
@@ -16,6 +16,7 @@ router.get("/category",verifyJwt,getPostsByCategory);
 router.get("/search",verifyJwt,searchPosts);
 // toogle like  api
 router.post("/like/:postId",verifyJwt,likeLimiter,likePost);
+router.get("/:authorId",verifyJwt,getPostsByAuthorId);
 
 
 

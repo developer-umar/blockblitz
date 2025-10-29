@@ -463,6 +463,33 @@ export const searchPosts = asyncHandler(async (req, res) => {
 });
 
 
+// get  post by author id 
+
+// matalb ek author ne kitne post kiya ssare feth karo  
+
+
+export const getPostsByAuthorId = asyncHandler(async (req, res) => {
+  const { authorId } = req.params;
+
+  // Validate id
+  if (!mongoose.Types.ObjectId.isValid(authorId)) {
+    throw new ApiError(400, "Invalid authorId");
+  }
+
+  // Find posts with matching authorId
+  const posts = await Post.find({ authorId });
+
+  // If no posts found
+  if (!posts || posts.length === 0) {
+    throw new ApiError(404, "No posts found for this author");
+  }
+
+  // Send as it is
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {posts}, "Posts fetched successfully"));
+});
+
 
 
 
