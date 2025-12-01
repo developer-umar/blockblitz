@@ -13,7 +13,7 @@ app.use(cors({
   credentials: true
 }));
 
-app.options("*", cors()); // 🔥 CORS preflight fix
+
 app.use(express.json());   
 app.use(express.urlencoded({extended: true, limit: "16kb"}))
 app.use(express.static("public"))
